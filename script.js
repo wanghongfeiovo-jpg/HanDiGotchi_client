@@ -3,7 +3,7 @@
  * Game state and tick logic live on the Spring Boot server.
  */
 
-const API_BASE = 'https://handigotchi-backend.onrender.com';
+const API_BASE = 'https://handigotchi-backend.onrender.com/api';
 
 const STAGES = ['egg', 'baby', 'teen', 'adult'];
 const STATUS_POLL_MS = 2000;
@@ -35,9 +35,9 @@ const HAPPY_ANIM_FRAME_MS = 600;
 const CINEMATIC_FRAME_MS = HAPPY_ANIM_FRAME_MS;
 
 const PLAYLIST = [
-  'assets/bgm_1.mp3',
-  'assets/bgm_2.mp3',
-  'assets/bgm_3.mp3'
+  './assets/bgm_1.mp3',
+  './assets/bgm_2.mp3',
+  './assets/bgm_3.mp3'
 ];
 let currentTrack = -1;
 let isMusicStarted = false;
@@ -150,7 +150,7 @@ async function apiPost(path, body) {
 }
 
 function asset(name) {
-  return `assets/${name}`;
+  return `./assets/${name}`;
 }
 
 // function playNextTrack() {
@@ -499,7 +499,7 @@ function updateBars() {
 function petImagePath() {
   if (!game.petType) return null;
   if (game.dead) return asset('prop_ghost.PNG');
-  if (game.stage === 'egg') return `assets/${game.petType}_egg.PNG`;
+  if (game.stage === 'egg') return asset(`${game.petType}_egg.PNG`);
 
   const stage = game.stage;
   let action = game.animAction;
@@ -513,7 +513,7 @@ function petImagePath() {
   if (stage === 'baby' && action === 'eat') action = 'happy';
 
   const frame = game.animFrame;
-  return `assets/${game.petType}_${stage}_${action}_${frame}.PNG`;
+  return asset(`${game.petType}_${stage}_${action}_${frame}.PNG`);
 }
 
 function refreshPetSprite() {
