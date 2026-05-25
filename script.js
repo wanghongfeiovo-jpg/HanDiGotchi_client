@@ -3,7 +3,7 @@
  * Game state and tick logic live on the Spring Boot server.
  */
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = 'https://handigotchi-backend.onrender.com';
 
 const STAGES = ['egg', 'baby', 'teen', 'adult'];
 const STATUS_POLL_MS = 2000;
@@ -1019,7 +1019,7 @@ async function onEggClick(e) {
     }
   } catch (err) {
     console.error('Egg click failed:', err);
-    spawnPetParticle('Server offline — start Spring Boot on :8080', { topPercent: 4 });
+    spawnPetParticle('Waking up the cloud server, please wait a moment... ☁️', { topPercent: 4 });
   } finally {
     eggClickInFlight = false;
   }
@@ -1078,7 +1078,7 @@ async function init() {
     lastPoopCount = dto.poopCount;
     startLoops();
   } catch (err) {
-    console.error('Server not reachable. Start Spring Boot on port 8080.', err);
+    console.error('Cloud server not reachable. It might be waking up from sleep.', err);
     spawnPetParticle('Server offline! Start Spring Boot.', { topPercent: 4 });
   }
 
