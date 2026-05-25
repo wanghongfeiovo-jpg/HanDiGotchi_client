@@ -50,7 +50,7 @@ body {
   -webkit-user-select: none;
 
   /* 3. 换掉透明背景，用上你的 bg.png */
-  background-image: url('assets/bg.png'); 
+  background-image: url('./assets/bg.png'); 
   background-repeat: repeat;
   background-position: top left;
   background-size: 400px; /* 蛋的大小如果觉得不合适，调这里 */
