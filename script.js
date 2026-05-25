@@ -15,7 +15,7 @@ const MEALS = [
   { id: 'omurice', src: 'prop_meal_omurice.PNG', hunger: 80, energy: 25 },
 ];
 const SNACKS = [
-  { id: 'pudding', name: 'Pudding', src: 'prop_snack_pudding.png', happy: 15, overload: 5 },
+  { id: 'pudding', name: 'Pudding', src: 'prop_snack_pudding.PNG', happy: 15, overload: 5 },
   { id: 'cookie', src: 'prop_snack_cookie.PNG', happy: 30, overload: 3 },
   { id: 'cake', src: 'prop_snack_cake.PNG', happy: 50, overload: 2 },
 ];
@@ -499,7 +499,7 @@ function updateBars() {
 function petImagePath() {
   if (!game.petType) return null;
   if (game.dead) return asset('prop_ghost.PNG');
-  if (game.stage === 'egg') return `assets/${game.petType}_egg.png`;
+  if (game.stage === 'egg') return `assets/${game.petType}_egg.PNG`;
 
   const stage = game.stage;
   let action = game.animAction;
@@ -513,7 +513,7 @@ function petImagePath() {
   if (stage === 'baby' && action === 'eat') action = 'happy';
 
   const frame = game.animFrame;
-  return `assets/${game.petType}_${stage}_${action}_${frame}.png`;
+  return `assets/${game.petType}_${stage}_${action}_${frame}.PNG`;
 }
 
 function refreshPetSprite() {
