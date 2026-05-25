@@ -1,0 +1,870 @@
+/* HanDiGotchi — proportional scaling (design canvas → viewport) */
+
+:root {
+  --brown: #3e2723;
+  --pink-bar: #ff6b8bbd;
+  --yellow-bar: #ffc928ce;
+  --blue-bar: #29b5f6a8;
+  --font-main: 'Press Start 2P', monospace;
+
+  /* Design reference: 420×420 logical units, 16px base em */
+  --design-base-px: 420;
+  --design-font-px: 16;
+
+  /* Shell LCD cutout (percent of shell image) */
+  --screen-top: 28%;
+  --screen-left: 24.5%;
+  --screen-size: 51%;
+
+  /* Screen interior layout ratios */
+  --header-flex: 18%;
+  --stat-row-width: 70%;
+  --stat-label-width: 6em;
+  --stat-track-height: 0.6em;
+
+  /* Shared bottom icon dock — main menu + feed/play props (identical slot) */
+  --menu-slot-screen-bottom: 24%;
+  --menu-icon-size: 8.5cqw;
+  --menu-icon-gap: 0.05cqw;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  
+  /* 1. 保留原本的字体和文字颜色 */
+  font-family: var(--font-main);
+  color: var(--brown);
+
+  /* 2. 保留“防误触”：点蛋的时候不会不小心选中文字变蓝 */
+  user-select: none;
+  -webkit-user-select: none;
+
+  /* 3. 换掉透明背景，用上你的 bg.png */
+  background-image: url('assets/bg.png'); 
+  background-repeat: repeat;
+  background-position: top left;
+  background-size: 400px; /* 蛋的大小如果觉得不合适，调这里 */
+  background-color: #FFFDF5; /* 兜底米白色 */
+
+  /* 4. 这里的 overflow 改成 auto 比较保险 */
+  /* 如果你的游戏内容超出了屏幕，它允许你滚动；如果正好，就不会出现滚动条 */
+  overflow: auto; 
+
+  /* 5. 居中设置 */
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ── Proportional scale: square viewport, em scales with window ── */
+.app-root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.game-viewport {
+  position: relative;
+  width: min(100vw, 100vh);
+  height: min(100vw, 100vh);
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
+  font-size: calc(min(100vw, 100vh) / (var(--design-base-px) / var(--design-font-px)));
+  container-type: size;
+  container-name: game;
+}
+
+.shell-wrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  -webkit-app-region: drag;
+}
+
+.shell-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.screen-canvas {
+  position: absolute;
+  top: var(--screen-top);
+  left: var(--screen-left);
+  width: var(--screen-size);
+  height: var(--screen-size);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 2;
+  -webkit-app-region: no-drag;
+  /* Anchor for menu dock + submenu cancels */
+  isolation: isolate;
+}
+
+.screen-canvas > .overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 55;
+}
+
+.screen-canvas > .overlay.ending-overlay {
+  z-index: 9999;
+}
+
+.screen-canvas.overflow-visible {
+  overflow: visible;
+}
+
+/* ── Header: ~87% wide stat bars, equal track lengths ── */
+.region-header {
+  flex: 0 0 var(--header-flex);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.28em;
+  padding: 0.7em 0 0;
+  z-index: 40;
+  -webkit-app-region: no-drag;
+  position: relative;
+}
+
+.region-header.hidden {
+  visibility: hidden;
+}
+
+.stat-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  width: var(--stat-row-width);
+  max-width: var(--stat-row-width);
+  font-size: 0.4em;
+}
+
+.stat-label {
+  flex: 0 0 var(--stat-label-width);
+  width: var(--stat-label-width);
+  line-height: 1.2;
+}
+
+.stat-track {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  height: var(--stat-track-height);
+  border: 0.16em solid var(--brown);
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 0.1em;
+  overflow: hidden;
+}
+
+.stat-fill {
+  height: 100%;
+  width: 0%;
+  transition: width 0.35s ease;
+}
+
+.hunger-fill { background: var(--pink-bar); }
+.happy-fill { background: var(--yellow-bar); }
+.energy-fill { background: var(--blue-bar); }
+
+.stat-bar.at-max .stat-fill {
+  animation: bar-glow 1.2s ease-in-out infinite;
+}
+
+.stat-bar.at-max[data-stat='hunger'] .stat-fill {
+  filter: drop-shadow(0 0 0.35em #ffd1dc) drop-shadow(0 0 0.6em #ffd1dc);
+}
+.stat-bar.at-max[data-stat='happy'] .stat-fill {
+  filter: drop-shadow(0 0 0.35em #fff9c4) drop-shadow(0 0 0.6em #fff9c4);
+}
+.stat-bar.at-max[data-stat='energy'] .stat-fill {
+  filter: drop-shadow(0 0 0.35em #b3e5fc) drop-shadow(0 0 0.6em #b3e5fc);
+}
+
+@keyframes bar-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.82; }
+}
+
+/* ── Stage ── */
+.region-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  -webkit-app-region: no-drag;
+}
+
+/* ── Character selection (pre-game) ── */
+.character-select-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2em;
+  padding: 8% 6%;
+  background: rgba(255, 253, 245, 0.88);
+  -webkit-app-region: no-drag;
+  pointer-events: auto;
+}
+
+.character-select-title {
+  font-family: var(--font-main);
+  font-size: 0.52em;
+  line-height: 1.6;
+  color: var(--brown);
+  text-align: center;
+}
+
+.character-select-options {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 1.4em;
+  width: 100%;
+  max-width: 92%;
+}
+
+.egg-select-btn {
+  flex: 0 1 auto;
+  background: none;
+  border: none;
+  padding: 0.35em;
+  margin: 0;
+  cursor: pointer;
+  border-radius: 0.25em;
+  transition: transform 0.2s ease, filter 0.2s ease;
+  -webkit-app-region: no-drag;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.egg-select-btn img {
+  display: block;
+  width: 5.5em;
+  max-width: 28cqw;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.egg-select-btn:hover {
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 0.35em rgba(255, 107, 139, 0.55));
+}
+
+.egg-select-btn:active {
+  transform: scale(1.02);
+}
+
+.greeting-text {
+  display: none;
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  font-size: 0.45em;
+  line-height: 1.6;
+  text-align: center;
+  color: var(--brown);
+  width: 90%;
+  pointer-events: none;
+}
+
+.greeting-text.visible {
+  display: block;
+}
+
+.stage-entities {
+  position: absolute;
+  inset: 0;
+}
+
+.poop-layer,
+.food-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.poop-layer { z-index: 10; }
+.food-layer { z-index: 10; }
+
+.pet-wrap {
+  position: absolute;
+  left: 50%;
+  top: 27%; /* 把宠物稍微往下放一点，居中一点 */
+  transform: translate(-50%, -50%);
+  width: 65%; /* 缩小包裹它的容器 */
+  height: 65%; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.pet-sprite {
+  max-width: 100%; /* 从 128% 恢复到正常比例，刚好缩小约25% */
+  max-height: 100%; 
+  object-fit: contain;
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+
+.pet-wrap.is-egg {
+  top: 40% !important;
+}
+
+.pet-sprite.egg-shake {
+  animation: egg-wobble 0.45s ease-in-out infinite;
+}
+
+@keyframes egg-wobble {
+  0%, 100% { transform: rotate(-4deg) translateY(0); }
+  25% { transform: rotate(4deg) translateY(-2%); }
+  50% { transform: rotate(-3deg) translateY(1%); }
+  75% { transform: rotate(3deg) translateY(-1%); }
+}
+
+.pet-sprite.ghost-ascend {
+  animation: ghost-rise 4.5s linear forwards;
+  z-index: 25;
+}
+
+@keyframes ghost-rise {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(-220%); opacity: 0.95; }
+}
+
+.skull-orbit {
+  position: absolute;
+  inset: -15%;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.skull-orbit .skull {
+  position: absolute;
+  width: 18%;
+  height: auto;
+  object-fit: contain;
+  left: 50%;
+  top: 50%;
+  margin: -9% 0 0 -9%;
+  animation: skull-spin 3s linear infinite;
+}
+
+.skull-orbit .skull:nth-child(1) { animation-delay: 0s; }
+.skull-orbit .skull:nth-child(2) { animation-delay: -1s; }
+.skull-orbit .skull:nth-child(3) { animation-delay: -2s; }
+
+@keyframes skull-spin {
+  from { transform: rotate(0deg) translateX(42%) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(42%) rotate(-360deg); }
+}
+
+.poop-sprite {
+  position: absolute;
+  width: 10%;
+  object-fit: contain;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.food-falling {
+  position: absolute;
+  width: 16%;
+  object-fit: contain;
+  z-index: 10;
+  transition: top 0.85s ease-in, left 0.85s ease-in, transform 0.85s ease-in;
+  pointer-events: none;
+}
+
+.bubble-clean {
+  position: absolute;
+  width: 16%;
+  object-fit: contain;
+  z-index: 10;
+  transition: transform 2s ease-out, opacity 2s ease-out;
+}
+
+/* Particles — always above pet, in gap between pet & stat header */
+.particle-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 38;
+  overflow: visible;
+}
+
+.pet-particle {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.48em !important;
+  color: var(--brown);
+  animation: particle-float 5.5s ease-out forwards;
+  pointer-events: none;
+  white-space: pre-wrap;
+  text-align: center;
+  width: 86%;
+  max-width: 86%;
+  text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
+}
+
+@keyframes particle-float {
+  0% { opacity: 0; transform: translate(-50%, 0); }
+  15% { opacity: 1; transform: translate(-50%, -6%); }
+  80% { opacity: 1; transform: translate(-50%, -16%); }
+  100% { opacity: 0; transform: translate(-50%, -26%); }
+}
+
+/* Feed text row — Meal/Snack smaller; Cancel smallest; shared baseline */
+.feed-choices {
+  position: absolute;
+  bottom: 38%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.55em;
+  z-index: 50;
+  width: max-content;
+  max-width: 92%;
+}
+
+.feed-choices .feed-branch,
+.feed-choices .feed-cancel {
+  flex: 0 0 auto;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0;
+  margin: 0;
+  vertical-align: baseline;
+}
+
+.feed-choices .feed-branch {
+  font-size: 0.46em;
+  line-height: 1;
+}
+
+.feed-choices .feed-cancel {
+  font-size: 0.34em;
+  line-height: 1;
+}
+
+/* ── Bottom icon dock (main + submenus share one anchor) ── */
+.region-menu.hidden,
+.region-menu[hidden] {
+  display: none !important;
+}
+
+.region-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--menu-slot-screen-bottom);
+  height: 0;
+  overflow: visible;
+  z-index: 45;
+  -webkit-app-region: no-drag;
+  pointer-events: none;
+}
+
+.icon-dock {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--menu-icon-gap);
+  width: 100%;
+  max-width: 100%;
+  pointer-events: auto;
+  background: none;
+}
+
+.menu-default,
+.submenu-row {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--menu-icon-gap);
+  padding: 0;
+  background: none;
+}
+
+.menu-default[hidden],
+.submenu-row[hidden] {
+  display: none !important;
+}
+
+/* Feed/play icon rows + cancel — icons stay in dock slot; cancel sits below without shifting icons */
+.feed-submenu-slot,
+.play-submenu-slot {
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  position: relative;
+  flex: 0 0 auto;
+  pointer-events: auto;
+}
+
+.feed-submenu-slot[hidden],
+.play-submenu-slot[hidden] {
+  display: none !important;
+}
+
+.feed-icons-cancel-row,
+.play-icons-cancel-row {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  margin-top: 0.35em;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: max-content;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.feed-icons-cancel-row[hidden],
+.play-icons-cancel-row[hidden] {
+  display: none !important;
+}
+
+.feed-icons-cancel,
+.play-icons-cancel {
+  font-size: 0.34em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.menu-btn {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  flex: 0 0 auto;
+  -webkit-app-region: no-drag;
+  border-radius: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.menu-btn.lights-out-locked {
+  opacity: 0.3;
+  filter: grayscale(1);
+  pointer-events: none;
+  cursor: default;
+}
+
+.menu-btn::before,
+.menu-btn::after {
+  display: none !important;
+  content: none !important;
+}
+
+.menu-btn img,
+.submenu-row img {
+  width: var(--menu-icon-size);
+  max-width: var(--menu-icon-size);
+  height: auto;
+  object-fit: contain;
+  display: block;
+  background: none;
+  border: none;
+  box-shadow: none;
+  filter: none;
+}
+
+.submenu-row button {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  flex: 0 0 auto;
+  border-radius: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.menu-feed-submenu {
+  display: none !important;
+}
+
+.text-choice {
+  font-family: var(--font-main);
+  color: var(--brown);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  line-height: 1;
+}
+
+.text-choice:hover {
+  opacity: 0.75;
+}
+
+.cancel-btn {
+  flex: 0 0 auto;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.close-btn {
+  position: absolute;
+  top: 2%;
+  right: 3%;
+  width: 1.6em;
+  height: 1.6em;
+  font-size: 0.65em;
+  line-height: 1;
+  color: rgba(62, 39, 35, 0.55);
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: 0.15em;
+  cursor: pointer;
+  z-index: 50;
+  -webkit-app-region: no-drag;
+}
+
+.close-btn:hover {
+  color: var(--brown);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.overlay {
+  pointer-events: none;
+}
+
+.narrative-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8%;
+  background: rgba(255, 255, 255, 0.88);
+  pointer-events: none;
+}
+
+.narrative-overlay.shine {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 249, 196, 0.95),
+    rgba(255, 209, 220, 0.95),
+    rgba(179, 229, 252, 0.95)
+  );
+  animation: shine-pulse 2s ease-in-out infinite;
+}
+
+@keyframes shine-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.08); }
+}
+
+.narrative-text {
+  text-align: center;
+  font-size: 0.55em;
+  line-height: 1.8;
+  color: var(--brown);
+}
+
+.farewell-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 6% 5%;
+  background: rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+.screen-canvas.cinematic-mode .region-header,
+.screen-canvas.cinematic-mode .region-menu,
+.screen-canvas.cinematic-mode .feed-choices {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#ending-overlay.ending-overlay {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 6% 5%;
+  background: rgba(253, 250, 242, 0.95);
+  pointer-events: auto !important;
+  text-align: center;
+  overflow: auto;
+  position: absolute;
+  inset: 0;
+  z-index: 9999 !important;
+  visibility: visible;
+  opacity: 1;
+}
+
+#ending-overlay.ending-overlay[hidden] {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.ending-text {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 0.65em;
+  padding: 0 0.15em;
+  font-size: 0.48em;
+  line-height: 1.65;
+  color: #5d4037;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  /* 🌟 就是这一行，它是处理 \n 的魔法 */
+  white-space: pre-wrap !important; 
+  
+  /* 如果你希望文字居中对齐，可以加上这行 */
+  /* text-align: center; */
+  
+  /* 增加一点行间距，让文字不那么拥挤 */
+  line-height: 1.6;
+}
+
+
+.farewell-text {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 0.15em;
+  text-align: center;
+  font-size: 0.48em;
+  line-height: 1.65;
+  color: #fff;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.game-viewport > .restart-prompt {
+  position: absolute;
+  bottom: 6%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.55em;
+  color: var(--brown);
+  z-index: 55;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  animation: restart-blink 0.9s step-end infinite;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+@keyframes restart-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.25; }
+}
+
+.stat-bar.final-love .stat-fill {
+  width: 100% !important;
+  background: #ff69b4 !important;
+  box-shadow: 0 0 8px #ff69b4, 0 0 16px rgba(255, 105, 180, 0.75);
+}
+
+.stat-bar.final-love[data-stat='hunger'] .stat-fill,
+.stat-bar.final-love[data-stat='happy'] .stat-fill,
+.stat-bar.final-love[data-stat='energy'] .stat-fill {
+  width: 100% !important;
+  background: #ff69b4 !important;
+  box-shadow: 0 0 8px #ff69b4, 0 0 16px rgba(255, 105, 180, 0.75);
+}
+
+.end-choice-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5em 0.75em;
+  margin-top: 0.35em;
+  z-index: 70;
+  width: 100%;
+}
+
+.end-btn {
+  font-family: var(--font-main);
+  font-size: 0.42em;
+  background: white;
+  border: 2px solid var(--brown);
+  padding: 0.35em 0.5em;
+  cursor: pointer;
+  color: var(--brown);
+  -webkit-app-region: no-drag;
+  white-space: nowrap;
+}
+
+.end-btn:hover {
+  background: var(--pink-bar);
+}
+
+.pet-wrap.pet-exit {
+  animation: pet-exit-stage 2.8s ease-in forwards;
+}
+
+@keyframes pet-exit-stage {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(130%);
+    opacity: 0;
+  }
+}
+
+
+

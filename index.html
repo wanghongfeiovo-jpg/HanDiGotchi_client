@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' http://localhost:8080 http://127.0.0.1:8080;" /> -->
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline';" />
+  <title>HanDiGotchi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app-root" class="app-root">
+    <div class="game-viewport" id="game-viewport">
+    <div class="shell-wrapper" id="shell-wrapper">
+      <img class="shell-bg" src="assets/shell_main.PNG" alt="" draggable="false" />
+
+      <div class="screen-canvas" id="screen-canvas">
+        <header class="region-header" id="region-header">
+          <div class="stat-bar" data-stat="hunger">
+            <span class="stat-label">HUNGER</span>
+            <div class="stat-track"><div class="stat-fill hunger-fill" id="bar-hunger"></div></div>
+          </div>
+          <div class="stat-bar" data-stat="happy">
+            <span class="stat-label">HAPPY</span>
+            <div class="stat-track"><div class="stat-fill happy-fill" id="bar-happy"></div></div>
+          </div>
+          <div class="stat-bar" data-stat="energy">
+            <span class="stat-label">ENERGY</span>
+            <div class="stat-track"><div class="stat-fill energy-fill" id="bar-energy"></div></div>
+          </div>
+        </header>
+
+        <main class="region-stage" id="region-stage">
+          <div class="character-select-overlay" id="character-select-overlay">
+            <h2 class="character-select-title">CHOOSE YOUR EGG!</h2>
+            <div class="character-select-options">
+              <button type="button" class="egg-select-btn" id="select-h" title="H">
+                <img src="assets/h_egg.png" alt="Seal egg" draggable="false" />
+              </button>
+              <button type="button" class="egg-select-btn" id="select-d" title="D">
+                <img src="assets/d_egg.png" alt="Bear egg" draggable="false" />
+              </button>
+            </div>
+          </div>
+
+          <p class="greeting-text" id="greeting-text" hidden></p>
+
+          <div class="stage-entities" id="stage-entities">
+            <div class="poop-layer" id="poop-layer"></div>
+            <div class="food-layer" id="food-layer"></div>
+            <div class="pet-wrap" id="pet-wrap">
+              <img class="pet-sprite" id="pet-sprite" alt="" draggable="false" />
+              <div class="skull-orbit" id="skull-orbit" hidden></div>
+            </div>
+            <div class="particle-layer" id="particle-layer"></div>
+          </div>
+
+          <div class="feed-choices" id="feed-choices" hidden>
+            <button type="button" class="text-choice feed-branch" data-feed-branch="meal">1.MEAL</button>
+            <button type="button" class="text-choice feed-branch" data-feed-branch="snack">2.SNACK</button>
+            <button type="button" class="text-choice cancel-btn feed-cancel" id="feed-cancel">[CANCEL]</button>
+          </div>
+
+        </main>
+
+        <footer class="region-menu" id="region-menu">
+          <div class="icon-dock" id="icon-dock">
+            <div class="menu-default" id="menu-default">
+              <button type="button" class="menu-btn" data-action="feed" title="Feed">
+                <img src="assets/icon_feed.PNG" alt="Feed" draggable="false" />
+              </button>
+              <button type="button" class="menu-btn" data-action="sleep" title="Sleep">
+                <img src="assets/icon_sleep.PNG" alt="Sleep" draggable="false" />
+              </button>
+              <button type="button" class="menu-btn" data-action="play" title="Play">
+                <img src="assets/icon_play.PNG" alt="Play" draggable="false" />
+              </button>
+              <button type="button" class="menu-btn" data-action="med" title="Medicine">
+                <img src="assets/icon_med.PNG" alt="Medicine" draggable="false" />
+              </button>
+              <button type="button" class="menu-btn" data-action="clean" title="Clean">
+                <img src="assets/icon_clean.PNG" alt="Clean" draggable="false" />
+              </button>
+            </div>
+            <div class="feed-submenu-slot" id="feed-submenu-slot" hidden>
+              <div class="meal-row submenu-row" id="meal-row" hidden></div>
+              <div class="snack-row submenu-row" id="snack-row" hidden></div>
+              <div class="feed-icons-cancel-row" id="feed-icons-cancel-row" hidden>
+                <button type="button" class="text-choice cancel-btn feed-icons-cancel" id="feed-icons-cancel">[CANCEL]</button>
+              </div>
+            </div>
+            <div class="play-submenu-slot" id="play-submenu-slot" hidden>
+              <div class="play-row submenu-row" id="play-row" hidden>
+                <button type="button" class="menu-btn play-choice" data-play="ball">
+                  <img src="assets/prop_play_ball.PNG" alt="Ball" draggable="false" />
+                </button>
+                <button type="button" class="menu-btn play-choice" data-play="music">
+                  <img src="assets/prop_play_music.PNG" alt="Music" draggable="false" />
+                </button>
+              </div>
+              <div class="play-icons-cancel-row" id="play-icons-cancel-row" hidden>
+                <button type="button" class="text-choice cancel-btn play-icons-cancel" id="play-icons-cancel">[CANCEL]</button>
+              </div>
+            </div>
+          </div>
+          <div class="menu-feed-submenu" id="menu-feed-submenu" hidden aria-hidden="true"></div>
+        </footer>
+
+        <div class="overlay narrative-overlay" id="narrative-overlay" hidden>
+          <p class="narrative-text" id="narrative-text"></p>
+        </div>
+        <div class="overlay farewell-overlay" id="farewell-overlay" hidden>
+          <p class="farewell-text" id="farewell-text"></p>
+        </div>
+        <div class="overlay ending-overlay" id="ending-overlay" hidden>
+          <p class="ending-text" id="ending-text"></p>
+          <div class="end-choice-wrap" id="end-choice-wrap">
+            <button type="button" class="end-btn" id="ending-stay-btn">[Stay with me]</button>
+            <button type="button" class="end-btn" id="ending-restart-btn">[Restart]</button>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="close-btn" id="close-btn" aria-label="Close">×</button>
+    </div>
+
+    <p class="restart-prompt" id="restart-prompt" hidden>[CLICK TO RESTART]</p>
+    </div>
+  </div>
+
+  <audio id="game-audio"></audio>
+  
+  <script src="script.js"></script>
+</body>
+</html>
